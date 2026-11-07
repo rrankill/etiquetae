@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=62b8cff6-6cb3-4d7f-ba79-a47064074a10
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#103B35">
+  <title>Etiquetaê — Gestão de produtos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="mobile-top"><button class="icon-btn" id="menuToggle" aria-label="Abrir menu">☰</button><span class="mobile-brand">Etiquetaê</span></div>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">E</div><div><strong>Etiquetaê</strong><small>Gestão inteligente</small></div></div>
+      <div class="nav-label">MENU PRINCIPAL</div>
+      <nav id="navigation">
+        <a href="#inicio" data-page="inicio" class="active"><i data-lucide="layout-dashboard"></i> Início</a>
+        <a href="#roupas" data-page="roupas"><i data-lucide="shirt"></i> Roupas</a>
+        <a href="#calcados" data-page="calcados"><i data-lucide="footprints"></i> Calçados</a>
+        <a href="#casa" data-page="casa"><i data-lucide="lamp"></i> Moda Casa</a>
+        <a href="#relatorios" data-page="relatorios"><i data-lucide="chart-no-axes-combined"></i> Relatórios</a>
+      </nav>
+      <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span></div>
+    </aside>
+    <main class="main"><div id="app" aria-live="polite"></div></main>
+  </div>
+  <div id="toast" role="status"></div>
+  <dialog id="modal"></dialog>
+  <dialog id="scannerDialog" class="scanner-dialog">
+    <div class="scanner-head"><div><span class="eyebrow">ETIQUETAE SCANNER</span><h2>Ler números da etiqueta</h2><p>Aponte a câmera para os números impressos.</p></div><button class="icon-btn" type="button" data-action="stop-scanner" aria-label="Fechar scanner">✕</button></div>
+    <div class="scanner-view"><video id="scannerVideo" autoplay muted playsinline></video><div class="scanner-frame"><span></span></div><canvas id="scannerCanvas" hidden></canvas></div>
+    <p id="scannerStatus" class="scanner-status">Aguardando câmera…</p>
+    <div class="scanner-result"><div><small>NÚMERO IDENTIFICADO</small><strong id="scannerCandidate" data-code="">—</strong></div><button class="btn" id="scannerUse" type="button" data-action="capture-scan" disabled>Usar número</button></div>
+    <p class="scanner-footnote">A leitura é automática. Confira o número reconhecido antes de salvar o produto.</p>
+  </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html><script async src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="62b8cff6-6cb3-4d7f-ba79-a47064074a10" data-app-host="app.netlify.com" data-account-tier="free"></script>
