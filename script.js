@@ -91,7 +91,7 @@ const THEME_KEY='etiquetae_theme_v1';
 const PASSWORD_ITERATIONS=150000;
 let authMode='login';
 let isAuthenticated=false;
-try{isAuthenticated=sessionStorage.getItem(LOGIN_KEY)==='true'}catch(err){console.warn('Não foi possível restaurar a sessão:',err)}
+try{isAuthenticated=localStorage.getItem(LOGIN_KEY)==='true'}catch(err){console.warn('Não foi possível restaurar a sessão:',err)}
 function setTheme(theme,persist=true){
  const isDark=theme==='dark';
  document.documentElement.dataset.theme=isDark?'dark':'light';
@@ -155,7 +155,7 @@ function showAuthError(message){
  error.hidden=false;
 }
 function startAuthenticatedSession(){
- sessionStorage.setItem(LOGIN_KEY,'true');
+ localStorage.setItem(LOGIN_KEY,'true');
  setAuthenticated(true);
  render();
 }
@@ -261,6 +261,11 @@ function closeMobileMenu(){
  $('#sidebarBackdrop').hidden=true;
  $('#menuToggle').setAttribute('aria-expanded','false');
 }
+function openMobileMenu(){
+ $('#sidebar').classList.add('open');
+ $('#sidebarBackdrop').hidden=false;
+ $('#menuToggle').setAttribute('aria-expanded','true');
+}
 function goBackToParentPage(){
  const hash=decodeURIComponent(location.hash.slice(1)||'inicio').split('/');
  let parent;
@@ -330,6 +335,25 @@ $('#menuToggle').addEventListener('click',()=>{
  $('#menuToggle').setAttribute('aria-expanded',String(isOpen));
 });
 $('#sidebarBackdrop').addEventListener('click',closeMobileMenu);
+let menuSwipeStart=null;
+document.addEventListener('touchstart',e=>{
+ if(e.touches.length!==1||!window.matchMedia('(max-width: 900px)').matches||$('.shell').hidden){
+   menuSwipeStart=null;
+   return;
+ }
+ const touch=e.touches[0],menuOpen=$('#sidebar').classList.contains('open');
+ if(menuOpen||touch.clientX<=24)menuSwipeStart={x:touch.clientX,y:touch.clientY,menuOpen};
+},{passive:true});
+document.addEventListener('touchend',e=>{
+ if(!menuSwipeStart)return;
+ const start=menuSwipeStart;
+ menuSwipeStart=null;
+ const touch=e.changedTouches[0],deltaX=touch.clientX-start.x,deltaY=touch.clientY-start.y;
+ if(Math.abs(deltaX)<60||Math.abs(deltaX)<Math.abs(deltaY)*1.25)return;
+ if(start.menuOpen&&deltaX<0)closeMobileMenu();
+ else if(!start.menuOpen&&deltaX>0)openMobileMenu();
+},{passive:true});
+document.addEventListener('touchcancel',()=>{menuSwipeStart=null;},{passive:true});
 $('#themeToggle').addEventListener('click',()=>{
  setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 });
@@ -354,10 +378,8 @@ $('#loginForm').addEventListener('submit',async e=>{
      const salt=crypto.getRandomValues(new Uint8Array(16));
      accounts.push({email,salt:bytesToHex(salt),passwordHash:await passwordHash(password,salt),iterations:PASSWORD_ITERATIONS});
      localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(accounts));
-     sessionStorage.setItem(LOGIN_KEY,'true');
      $('#loginForm').reset();
-     setAuthenticated(true);
-     render();
+     startAuthenticatedSession();
    }else{
      const account=accounts.find(item=>item.email===email);
      if(!account){
@@ -395,7 +417,7 @@ document.addEventListener('click',async e=>{
    b.setAttribute('aria-pressed',String(visible));
  }
  if(action==='logout'){
-   try{sessionStorage.removeItem(LOGIN_KEY)}catch(err){console.warn('Não foi possível encerrar a sessão:',err)}
+   try{localStorage.removeItem(LOGIN_KEY)}catch(err){console.warn('Não foi possível encerrar a sessão:',err)}
    setAuthenticated(false);
    $('#loginForm').reset();
    setAuthMode('login');

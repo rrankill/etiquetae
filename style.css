@@ -159,3 +159,5 @@ input,select{transition:border-color .18s,box-shadow .18s}
 :root[data-theme="dark"] .modal-copy{color:var(--muted)}
 :root[data-theme="dark"] .icon-btn{color:#a0b0a7}
 :root[data-theme="dark"] .icon-btn:hover{background:#2b3b33;color:#d4e6d9}
+
+@media(max-width:900px){.mobile-top{justify-content:flex-start}.mobile-brand{margin-left:8px}#mobileBack{margin-left:auto}}
