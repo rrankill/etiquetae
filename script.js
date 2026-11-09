@@ -253,7 +253,21 @@ function render(){
  else html=dashboard();
  $('#app').innerHTML=html;
  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===(hash[0]==='grupo'||hash[0]==='cadastro'?hash[1]:hash[0])));
+ $('#mobileBack').hidden=hash.length===1&&hash[0]==='inicio';
  refreshIcons();updatePreview();
+}
+function closeMobileMenu(){
+ $('#sidebar').classList.remove('open');
+ $('#sidebarBackdrop').hidden=true;
+ $('#menuToggle').setAttribute('aria-expanded','false');
+}
+function goBackToParentPage(){
+ const hash=decodeURIComponent(location.hash.slice(1)||'inicio').split('/');
+ let parent;
+ if(hash[0]==='cadastro')parent=`#grupo/${encodeURIComponent(hash[1])}/${encodeURIComponent(hash[2])}`;
+ else if(hash[0]==='grupo')parent=`#${encodeURIComponent(hash[1])}`;
+ else if(hash[0]!=='inicio')parent='#inicio';
+ if(parent)location.hash=parent;
 }
 function updatePreview(){
  const input=$('#baseCode');if(!input)return;
@@ -308,8 +322,14 @@ function exportFile(format){
  if(format==='xlsx'){if(!window.XLSX)return toast('Biblioteca Excel indisponível. Verifique sua conexão.',true);const ws=XLSX.utils.json_to_sheet([{'Relatório':'Etiquetaê','Gerado em':date},...data]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Produtos');XLSX.writeFile(wb,stem+'.xlsx');return;}
  if(format==='pdf'){if(!window.jspdf?.jsPDF)return toast('Biblioteca PDF indisponível. Verifique sua conexão.',true);const doc=new jspdf.jsPDF({orientation:'landscape'});doc.setFontSize(16);doc.text('Relatório Etiquetaê',14,15);doc.setFontSize(9);doc.text(`Gerado em: ${date} · ${rows.length} registros · ${total(rows)} peças`,14,22);doc.autoTable({startY:29,head:[Object.keys(data[0])],body:data.map(r=>Object.values(r).map(String)),styles:{fontSize:7},headStyles:{fillColor:[16,59,53]}});doc.save(stem+'.pdf');}
 }
-$('#navigation').addEventListener('click',()=>$('#sidebar').classList.remove('open'));
-$('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
+$('#navigation').addEventListener('click',closeMobileMenu);
+$('#mobileBack').addEventListener('click',goBackToParentPage);
+$('#menuToggle').addEventListener('click',()=>{
+ const isOpen=$('#sidebar').classList.toggle('open');
+ $('#sidebarBackdrop').hidden=!isOpen;
+ $('#menuToggle').setAttribute('aria-expanded',String(isOpen));
+});
+$('#sidebarBackdrop').addEventListener('click',closeMobileMenu);
 $('#themeToggle').addEventListener('click',()=>{
  setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 });
@@ -396,6 +416,11 @@ document.addEventListener('click',async e=>{
  if(action==='stop-scanner')stopNumberScanner();
  if(action==='capture-scan')captureNumberScan();
 });
+$('#scannerImageInput').addEventListener('change',e=>{
+ const input=e.target,file=input.files?.[0];
+ input.value='';
+ processUploadedImage(file);
+});
 document.addEventListener('input',e=>{
  if(e.target.id==='baseCode'){e.target.value=e.target.value.replace(/\D/g,'').slice(0,sizeOptions(state.category,state.group,state.subcategory)?8:12);updatePreview();}
  if(e.target.id==='productSearch'){state.search=e.target.value;const p=products.filter(x=>x.category===state.category&&x.group===state.group&&x.subcategory===state.subcategory&&(!state.search||[x.fullCode,x.baseCode,x.size].join(' ').toLowerCase().includes(state.search.toLowerCase()))).sort((a,b)=>b.createdAt-a.createdAt);$('#productTable').innerHTML=tableMarkup(p);refreshIcons();}
@@ -403,33 +428,101 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{if(['filterCategory','filterGroup','filterSub'].includes(e.target.id)){const rows=filteredReport();$('#reportTable').innerHTML=tableMarkup(rows,false);$('#reportCount').textContent=`${rows.length} registros · ${total(rows)} peças`;refreshIcons();}});
 
 /* Scanner OCR: lê somente sequências numéricas impressas na etiqueta. */
-let scannerStream=null,scannerWorker=null,scannerLoop=null,scannerBusy=false,scannerTorch=false;
+let scannerStream=null,scannerWorker=null,scannerWorkerPromise=null,scannerLoop=null,scannerBusy=false,scannerTorch=false,scannerImageUrl=null;
 function scannerStatus(message,isError=false){
  const el=$('#scannerStatus');if(el){el.textContent=message;el.classList.toggle('error',!!isError);}
+}
+async function getScannerWorker(){
+ if(!window.Tesseract)throw new Error('Não foi possível carregar o leitor de números. Verifique a conexão.');
+ if(!scannerWorkerPromise){
+   scannerWorkerPromise=Tesseract.createWorker('eng').then(worker=>{
+     scannerWorker=worker;
+     return worker;
+   }).catch(err=>{
+     scannerWorkerPromise=null;
+     throw err;
+   });
+ }
+ return scannerWorkerPromise;
 }
 async function startNumberScanner(){
  const dlg=$('#scannerDialog');
  if(!dlg)return toast('Scanner indisponível nesta versão.',true);
+ dlg.showModal();
+ resetScannerImage();
  if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){
-   toast('A câmera exige que o site esteja publicado em HTTPS. Abra o endereço seguro para usar o scanner.',true);
+   scannerStatus('A câmera exige HTTPS ou não é compatível com este navegador. Você pode enviar uma imagem.',true);
    return;
  }
  try{
-   dlg.showModal();
    scannerStatus('Solicitando acesso à câmera…');
    scannerStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
    const video=$('#scannerVideo');video.srcObject=scannerStream;await video.play();
    scannerStatus('Câmera ativa. Centralize os números da etiqueta.');
-   if(!window.Tesseract){scannerStatus('Não foi possível carregar o leitor de números. Verifique a conexão.',true);return;}
    scannerStatus('Preparando reconhecimento de números…');
-   scannerWorker=await Tesseract.createWorker('eng');
+   await getScannerWorker();
    scannerStatus('Pronto! Mantenha os números nítidos dentro da área de leitura.');
    scannerLoop=setInterval(scanVideoFrame,1100);
  }catch(err){
    console.error('Scanner:',err);
-   scannerStatus(err.name==='NotAllowedError'?'Permita o acesso à câmera nas configurações do navegador.':err.name==='NotFoundError'?'Nenhuma câmera foi encontrada neste aparelho.':'Não foi possível iniciar a câmera. Verifique as permissões.',true);
+   scannerStatus(err.name==='NotAllowedError'?'Permita o acesso à câmera nas configurações do navegador ou envie uma imagem.':err.name==='NotFoundError'?'Nenhuma câmera foi encontrada neste aparelho. Envie uma imagem da galeria ou dos arquivos.':'Não foi possível iniciar a câmera. Você também pode enviar uma imagem.',true);
    if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
  }
+}
+async function processUploadedImage(file){
+ if(!file)return;
+ if(!file.type.startsWith('image/')){
+   scannerStatus('Selecione um arquivo de imagem válido.',true);
+   return;
+ }
+ if(scannerBusy){
+   scannerStatus('Aguarde a leitura atual terminar antes de enviar outra imagem.',true);
+   return;
+ }
+ scannerBusy=true;
+ if(scannerLoop){clearInterval(scannerLoop);scannerLoop=null;}
+ if(scannerStream){scannerStream.getTracks().forEach(track=>track.stop());scannerStream=null;}
+ resetScannerImage();
+ const video=$('#scannerVideo');
+ if(video){video.pause();video.srcObject=null;video.hidden=true;}
+ $('.scanner-frame').hidden=true;
+ const image=$('#scannerImage');
+ scannerImageUrl=URL.createObjectURL(file);
+ image.src=scannerImageUrl;
+ image.hidden=false;
+ $('#scannerCandidate').textContent='—';
+ $('#scannerCandidate').dataset.code='';
+ $('#scannerUse').disabled=true;
+ scannerStatus('Preparando leitura da imagem…');
+ try{
+   const worker=await getScannerWorker();
+   scannerStatus('Lendo os números da imagem…');
+   const result=await worker.recognize(file);
+   const candidate=extractNumericCandidate(result?.data?.text||'');
+   if(candidate){
+     const out=$('#scannerCandidate');
+     out.textContent=candidate;
+     out.dataset.code=candidate;
+     $('#scannerUse').disabled=false;
+     scannerStatus(`Número identificado: ${candidate}. Confira antes de usar.`);
+   }else{
+     scannerStatus('Nenhum número legível foi encontrado. Tente outra imagem mais nítida.',true);
+   }
+ }catch(err){
+   console.error('Leitura da imagem:',err);
+   scannerStatus(err.message||'Não foi possível ler esta imagem. Tente outro arquivo.',true);
+ }finally{
+   scannerBusy=false;
+ }
+}
+function resetScannerImage(){
+ if(scannerImageUrl){URL.revokeObjectURL(scannerImageUrl);scannerImageUrl=null;}
+ const image=$('#scannerImage');
+ if(image){image.removeAttribute('src');image.hidden=true;}
+ const video=$('#scannerVideo');
+ if(video)video.hidden=false;
+ const frame=$('.scanner-frame');
+ if(frame)frame.hidden=false;
 }
 async function scanVideoFrame(){
  if(scannerBusy||!scannerWorker)return;
@@ -505,13 +598,16 @@ async function captureNumberScan(){
 async function stopNumberScanner(){
  if(scannerLoop){clearInterval(scannerLoop);scannerLoop=null;}
  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
- if(scannerWorker){try{await scannerWorker.terminate()}catch(_){}scannerWorker=null;}
+ if(scannerWorker){try{await scannerWorker.terminate()}catch(err){console.warn('Não foi possível encerrar o leitor de números:',err)}scannerWorker=null;}
+ scannerWorkerPromise=null;
  const video=$('#scannerVideo');if(video)video.srcObject=null;
+ resetScannerImage();
+ const imageInput=$('#scannerImageInput');if(imageInput)imageInput.value='';
  const dlg=$('#scannerDialog');if(dlg?.open)dlg.close();
  scannerBusy=false;scannerTorch=false;
  const btn=$('#scannerUse');if(btn)btn.disabled=true;
  const candidate=$('#scannerCandidate');if(candidate){candidate.textContent='—';candidate.dataset.code='';}
 }
 
-window.addEventListener('hashchange',()=>{state.editing=null;state.search='';state.selectedSize=undefined;render();});
+window.addEventListener('hashchange',()=>{state.editing=null;state.search='';state.selectedSize=undefined;closeMobileMenu();render();window.scrollTo(0,0);});
 (async()=>{try{await load();setAuthenticated(isAuthenticated);render();}catch(err){$('#app').innerHTML=`<section class="panel"><h2>Não foi possível abrir o armazenamento</h2><p>Verifique se o navegador permite armazenamento local e recarregue o aplicativo.</p></section>`;console.error(err);}})();

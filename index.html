@@ -65,7 +65,8 @@
       <p class="login-notice">A conta é salva somente neste navegador e não pode ser recuperada em outro dispositivo. As contas deste dispositivo compartilham os mesmos registros. Para autenticação segura e sincronização, é necessário um servidor.</p>
     </section>
   </main>
-  <div class="mobile-top" hidden><button class="icon-btn" id="menuToggle" aria-label="Abrir menu">☰</button><span class="mobile-brand">Etiquetaê</span></div>
+  <div class="mobile-top" hidden><button class="icon-btn mobile-back" id="mobileBack" type="button" aria-label="Voltar para a página anterior"><i data-lucide="arrow-left"></i><span>Voltar</span></button><span class="mobile-brand">Etiquetaê</span><button class="icon-btn" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button></div>
+  <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Fechar menu" hidden></button>
   <div class="shell" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="brand"><div class="brand-mark">E</div><div><strong>Etiquetaê</strong><small>Gestão inteligente</small></div></div>
@@ -85,8 +86,9 @@
   <dialog id="modal"></dialog>
   <dialog id="scannerDialog" class="scanner-dialog">
     <div class="scanner-head"><div><span class="eyebrow">ETIQUETAE SCANNER</span><h2>Ler números da etiqueta</h2><p>Aponte a câmera para os números impressos.</p></div><button class="icon-btn" type="button" data-action="stop-scanner" aria-label="Fechar scanner">✕</button></div>
-    <div class="scanner-view"><video id="scannerVideo" autoplay muted playsinline></video><div class="scanner-frame"><span></span></div><canvas id="scannerCanvas" hidden></canvas></div>
+    <div class="scanner-view"><video id="scannerVideo" autoplay muted playsinline></video><img id="scannerImage" alt="Imagem selecionada para leitura" hidden><div class="scanner-frame"><span></span></div><canvas id="scannerCanvas" hidden></canvas></div>
     <p id="scannerStatus" class="scanner-status">Aguardando câmera…</p>
+    <div class="scanner-upload"><label class="btn secondary" for="scannerImageInput">Fazer upload de imagem</label><input id="scannerImageInput" type="file" accept="image/*" hidden><small>Escolha uma foto da galeria ou um arquivo do dispositivo.</small></div>
     <div class="scanner-result"><div><small>NÚMERO IDENTIFICADO</small><strong id="scannerCandidate" data-code="">—</strong></div><button class="btn" id="scannerUse" type="button" data-action="capture-scan" disabled>Usar número</button></div>
     <p class="scanner-footnote">A leitura é automática. Confira o número reconhecido antes de salvar o produto.</p>
   </dialog>
