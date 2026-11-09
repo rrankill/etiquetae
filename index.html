@@ -18,8 +18,55 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-  <div class="mobile-top"><button class="icon-btn" id="menuToggle" aria-label="Abrir menu">☰</button><span class="mobile-brand">Etiquetaê</span></div>
-  <div class="shell">
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Ativar tema escuro" title="Ativar tema escuro">
+    <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg>
+    <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+  </button>
+  <div class="splash-screen" id="splashScreen" aria-hidden="true">
+    <div class="splash-brand">
+      <span class="brand-mark splash-mark">E</span>
+      <strong>Etiquetaê</strong>
+    </div>
+  </div>
+  <script>
+    setTimeout(() => {
+      const splash = document.getElementById('splashScreen');
+      splash.classList.add('splash-leaving');
+      setTimeout(() => { splash.hidden = true; }, 130);
+    }, 870);
+  </script>
+  <main class="login-screen" id="loginScreen">
+    <section class="login-card" aria-labelledby="loginTitle">
+      <div class="login-brand"><span class="brand-mark">E</span><div><strong>Etiquetaê</strong><small>Gestão inteligente</small></div></div>
+      <span class="eyebrow" id="authEyebrow">BEM-VINDO(A) DE VOLTA</span>
+      <h1 id="loginTitle">Acesse seus registros</h1>
+      <p class="login-intro" id="authIntro">Entre com seus dados para continuar organizando seus produtos.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="loginEmail">E-MAIL</label>
+          <input id="loginEmail" name="email" type="email" autocomplete="username" placeholder="voce@exemplo.com" maxlength="254" required>
+        </div>
+        <div class="field">
+          <label for="loginPassword">SENHA</label>
+          <div class="password-input">
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="Mínimo de 8 caracteres" required>
+            <button class="password-toggle" type="button" data-action="toggle-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
+          </div>
+          <small class="field-hint">A senha deve ter pelo menos 8 caracteres.</small>
+        </div>
+        <div class="field" id="confirmPasswordField" hidden>
+          <label for="confirmPassword">CONFIRMAR SENHA</label>
+          <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Digite a senha novamente" disabled>
+        </div>
+        <p id="authError" class="auth-error" role="alert" hidden></p>
+        <button class="btn login-submit" id="authSubmit" type="submit">Entrar</button>
+      </form>
+      <button class="auth-switch" id="authSwitch" type="button">Criar novo usuário</button>
+      <p class="login-notice">A conta é salva somente neste navegador e não pode ser recuperada em outro dispositivo. As contas deste dispositivo compartilham os mesmos registros. Para autenticação segura e sincronização, é necessário um servidor.</p>
+    </section>
+  </main>
+  <div class="mobile-top" hidden><button class="icon-btn" id="menuToggle" aria-label="Abrir menu">☰</button><span class="mobile-brand">Etiquetaê</span></div>
+  <div class="shell" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="brand"><div class="brand-mark">E</div><div><strong>Etiquetaê</strong><small>Gestão inteligente</small></div></div>
       <div class="nav-label">MENU PRINCIPAL</div>
@@ -30,7 +77,7 @@
         <a href="#casa" data-page="casa"><i data-lucide="lamp"></i> Moda Casa</a>
         <a href="#relatorios" data-page="relatorios"><i data-lucide="chart-no-axes-combined"></i> Relatórios</a>
       </nav>
-      <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span></div>
+      <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span><button class="logout-btn" type="button" data-action="logout">Sair</button></div>
     </aside>
     <main class="main"><div id="app" aria-live="polite"></div></main>
   </div>

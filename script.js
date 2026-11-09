@@ -85,11 +85,80 @@ const SIZE={
 };
 let products=[],state={page:'inicio',category:'roupas',group:'Masculino',subcategory:'Cueca',size:'P',search:'',editing:null};
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LOGIN_KEY='etiquetae_authenticated_v2';
+const ACCOUNTS_KEY='etiquetae_accounts_v1';
+const THEME_KEY='etiquetae_theme_v1';
+const PASSWORD_ITERATIONS=150000;
+let authMode='login';
+let isAuthenticated=false;
+try{isAuthenticated=sessionStorage.getItem(LOGIN_KEY)==='true'}catch(err){console.warn('Não foi possível restaurar a sessão:',err)}
+function setTheme(theme,persist=true){
+ const isDark=theme==='dark';
+ document.documentElement.dataset.theme=isDark?'dark':'light';
+ const button=$('#themeToggle');
+ button.setAttribute('aria-label',isDark?'Ativar tema claro':'Ativar tema escuro');
+ button.title=isDark?'Ativar tema claro':'Ativar tema escuro';
+ if(persist){
+  try{localStorage.setItem(THEME_KEY,isDark?'dark':'light')}
+  catch(err){console.warn('Não foi possível salvar a preferência de tema:',err)}
+ }
+}
+try{setTheme(localStorage.getItem(THEME_KEY)==='dark'?'dark':'light',false)}
+catch(err){console.warn('Não foi possível carregar a preferência de tema:',err);setTheme('light',false)}
 const total=arr=>arr.reduce((n,p)=>n+Number(p.quantity||0),0);
 const catLabel=k=>CATEGORIES[k]?.label||k;
 const toast=(msg,error=false)=>{const t=$('#toast');t.textContent=msg;t.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.className='',2800)};
 const icon=(name)=>`<i data-lucide="${name}"></i>`;
 function refreshIcons(){if(window.lucide)lucide.createIcons();}
+function setAuthenticated(value){
+ isAuthenticated=value;
+ $('#loginScreen').hidden=value;
+ document.querySelector('.mobile-top').hidden=!value;
+ document.querySelector('.shell').hidden=!value;
+}
+function setAuthMode(mode){
+ authMode=mode;
+ const registering=mode==='register';
+ $('#authEyebrow').textContent=registering?'NOVA CONTA':'BEM-VINDO(A) DE VOLTA';
+ $('#loginTitle').textContent=registering?'Crie seu usuário':'Acesse seus registros';
+ $('#authIntro').textContent=registering?'Cadastre seu e-mail e crie uma senha para acessar a página.':'Entre com seus dados para continuar organizando seus produtos.';
+ $('#loginPassword').autocomplete=registering?'new-password':'current-password';
+ $('#confirmPasswordField').hidden=!registering;
+ $('#confirmPassword').disabled=!registering;
+ $('#confirmPassword').required=registering;
+ $('#authSubmit').textContent=registering?'Criar usuário':'Entrar';
+ $('#authSwitch').textContent=registering?'Já tenho um usuário':'Criar novo usuário';
+ $('#authError').hidden=true;
+ $('#authError').textContent='';
+}
+function getAccounts(){
+ const raw=localStorage.getItem(ACCOUNTS_KEY);
+ if(!raw)return [];
+ const accounts=JSON.parse(raw);
+ if(!Array.isArray(accounts))throw new Error('Os dados das contas estão inválidos neste navegador.');
+ return accounts;
+}
+async function passwordHash(password,salt){
+ if(!window.crypto?.subtle||!window.crypto?.getRandomValues)throw new Error('Este navegador não oferece armazenamento seguro de senha. Abra o site em uma conexão HTTPS atualizada.');
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);
+ const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:PASSWORD_ITERATIONS},key,256);
+ return Array.from(new Uint8Array(bits),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+function bytesToHex(bytes){return Array.from(bytes,byte=>byte.toString(16).padStart(2,'0')).join('')}
+function hexToBytes(hex){
+ if(typeof hex!=='string'||!/^(?:[0-9a-f]{2})+$/i.test(hex))throw new Error('Os dados da conta estão inválidos neste navegador.');
+ return Uint8Array.from(hex.match(/.{2}/g),byte=>parseInt(byte,16));
+}
+function showAuthError(message){
+ const error=$('#authError');
+ error.textContent=message;
+ error.hidden=false;
+}
+function startAuthenticatedSession(){
+ sessionStorage.setItem(LOGIN_KEY,'true');
+ setAuthenticated(true);
+ render();
+}
 async function load(){products=await db.products.toArray();}
 function allGroups(){return Object.entries(CATEGORIES).flatMap(([cat,c])=>Object.entries(c.groups).flatMap(([group,subs])=>subs.map(sub=>({cat,group,sub}))));}
 function sizeOptions(cat,group,sub){
@@ -110,17 +179,7 @@ function codeInfo(cat,group,sub,base,size){
 }
 function head(title,subtitle,crumb='ETIQUETAÊ'){return `<header class="page-head"><div><div class="eyebrow">${crumb}</div><h1>${title}</h1><p class="sub">${subtitle}</p></div></header>`;}
 function dashboard(){
- const recent=[...products].sort((a,b)=>b.createdAt-a.createdAt).slice(0,7);
- return `${head('Bem-vindo ao Etiquetaê','Organize seus produtos, acompanhe quantidades e gere relatórios com facilidade.')}
- <section class="hero"><div class="hero-orbit"></div><div class="hero-content"><div class="eyebrow"><span class="hero-spark">${icon('sparkles')}</span> PAINEL DE CONTROLE</div><h2>Organização que simplifica sua rotina.</h2><p>Cadastre códigos, acompanhe seu estoque de registros e encontre tudo em poucos segundos.</p><span class="hero-note">${icon('mouse-pointer-click')} Explore suas categorias para começar</span></div><div class="hero-art" aria-hidden="true"><span class="hero-ring"></span><span class="hero-tag">${icon('tag')}</span><span class="hero-shirt">${icon('shirt')}</span><span class="hero-check">${icon('check')}</span></div></section>
- <div class="stats">
- ${stat('Produtos cadastrados',products.length,'package')}
- ${stat('Códigos diferentes',new Set(products.map(p=>p.fullCode)).size,'scan-barcode')}
- ${stat('Total de peças',total(products),'layers')}
- </div>
- <h2 class="section-title">Explore suas categorias</h2><div class="category-grid">${Object.entries(CATEGORIES).map(([k,c])=>{const list=products.filter(p=>p.category===k);return `<a class="category-card" href="#${k}"><div class="stat-icon">${icon(c.icon)}</div><strong>${c.label}</strong><p>${list.length} registros · ${total(list)} peças</p></a>`}).join('')}</div>
- <section class="panel"><h2>Atividades recentes</h2>${recent.length?tableMarkup(recent,false):'<div class="empty">Nenhum produto cadastrado ainda. Comece escolhendo uma categoria.</div>'}</section>
- <p class="hint">${icon('database')} Seus registros ficam salvos neste navegador/dispositivo e não são sincronizados entre aparelhos. Exporte um backup na aba Relatórios.</p>`;
+ return productPage('roupas','Masculino','Básico',true);
 }
 function stat(label,value,ico){return `<article class="stat"><div class="stat-top"><span>${label}</span><span class="stat-icon">${icon(ico)}</span></div><strong>${Number(value).toLocaleString('pt-BR')}</strong></article>`;}
 function categoryPage(cat){
@@ -153,14 +212,14 @@ function tableMarkup(rows,actions=true){
  if(!rows.length)return '<div class="empty">Nenhum registro encontrado.</div>';
  return `<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Grupo</th><th>Subcategoria</th><th>Código principal</th><th>Tamanho</th><th>Identificador</th><th>Código completo</th><th>Quantidade</th>${actions?'<th>Ações</th>':''}</tr></thead><tbody>${rows.map(p=>`<tr><td>${catLabel(p.category)}</td><td>${esc(p.group)}</td><td>${esc(p.subcategory)}</td><td class="code">${esc(p.baseCode)}</td><td>${esc(p.size||'—')}</td><td>${esc(p.sizeId||'—')}</td><td class="code">${esc(p.fullCode)}</td><td>${p.quantity}</td>${actions?`<td><button class="icon-btn" data-action="edit" data-id="${p.id}" title="Editar">${icon('pencil')}</button><button class="icon-btn delete" data-action="delete" data-id="${p.id}" title="Excluir">${icon('trash-2')}</button></td>`:''}</tr>`).join('')}</tbody></table></div>`;
 }
-function productPage(cat,group,sub){
+function productPage(cat,group,sub,isHome=false){
  state.category=cat;state.group=group;state.subcategory=sub;
  const sizes=sizeOptions(cat,group,sub),withSize=!!sizes;
  const matches=products.filter(p=>p.category===cat&&p.group===group&&p.subcategory===sub&&(!state.search||[p.fullCode,p.baseCode,p.size].join(' ').toLowerCase().includes(state.search.toLowerCase()))).sort((a,b)=>b.createdAt-a.createdAt);
  const selected=state.editing?products.find(p=>p.id===state.editing):null;
  const activeSize=selected?.size || (sizes?.some(([label])=>label===state.selectedSize)?state.selectedSize:null) || (sizes?.some(([label])=>label===state.size)?state.size:null) || sizes?.[0]?.[0] || '';
  if(sizes)state.selectedSize=activeSize;
- return `${head(sub,'Cadastre e gerencie os códigos desta subcategoria.',`${catLabel(cat).toUpperCase()} / ${group.toUpperCase()}`)}
+ return `${isHome?'':head(sub,'Cadastre e gerencie os códigos desta subcategoria.',`${catLabel(cat).toUpperCase()} / ${group.toUpperCase()}`)}
  <section class="panel"><h2>${selected?'Editar produto':'Adicionar produto'}</h2><div class="form-grid">
  <div class="field"><label for="baseCode">${withSize?'CÓDIGO-BASE (8 DÍGITOS)':'CÓDIGO DO PRODUTO (12 DÍGITOS)'}</label><div class="scan-input-row"><input id="baseCode" inputmode="numeric" maxlength="${withSize?8:12}" placeholder="${withSize?'00000000':'000000000000'}" value="${esc(selected?.baseCode||'')}"><button class="btn scan-launch" type="button" data-action="start-scanner">${icon('scan-line')} <span>Ler números</span></button></div></div>
  ${withSize?`<div class="field"><label>TAMANHO</label><div class="size-list">${sizes.map(([label,id])=>`<button type="button" class="size-btn ${activeSize===label?'selected':''}" data-size="${esc(label)}">${esc(label)}<small>${id}</small></button>`).join('')}</div></div>`:''}
@@ -184,6 +243,7 @@ function reports(){
 }
 function filteredReport(){return products.filter(p=>(!$('#filterCategory')?.value||p.category===$('#filterCategory').value)&&(!$('#filterGroup')?.value||p.group===$('#filterGroup').value)&&(!$('#filterSub')?.value||p.subcategory===$('#filterSub').value));}
 function render(){
+ if(!isAuthenticated)return;
  const hash=decodeURIComponent(location.hash.slice(1)||'inicio').split('/');
  let html;
  if(hash[0]==='grupo')html=groupPage(hash[1],hash[2]);
@@ -250,10 +310,81 @@ function exportFile(format){
 }
 $('#navigation').addEventListener('click',()=>$('#sidebar').classList.remove('open'));
 $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
+$('#themeToggle').addEventListener('click',()=>{
+ setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+});
+$('#loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const email=$('#loginEmail').value.trim().toLowerCase();
+ const password=$('#loginPassword').value;
+ const submit=$('#authSubmit');
+ submit.disabled=true;
+ try{
+   const accounts=getAccounts();
+   if(authMode==='register'){
+     if(password!==$('#confirmPassword').value){
+       showAuthError('As senhas não conferem.');
+       return;
+     }
+     if(accounts.some(account=>account.email===email)){
+       showAuthError('Já existe um usuário com este e-mail. Entre com sua senha.');
+       return;
+     }
+     if(!window.crypto?.getRandomValues)throw new Error('Este navegador não oferece armazenamento seguro de senha. Abra o site em uma conexão HTTPS atualizada.');
+     const salt=crypto.getRandomValues(new Uint8Array(16));
+     accounts.push({email,salt:bytesToHex(salt),passwordHash:await passwordHash(password,salt),iterations:PASSWORD_ITERATIONS});
+     localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(accounts));
+     sessionStorage.setItem(LOGIN_KEY,'true');
+     $('#loginForm').reset();
+     setAuthenticated(true);
+     render();
+   }else{
+     const account=accounts.find(item=>item.email===email);
+     if(!account){
+       showAuthError('E-mail ou senha incorretos.');
+       return;
+     }
+     const actual=await passwordHash(password,hexToBytes(account.salt));
+     if(actual!==account.passwordHash){
+       showAuthError('E-mail ou senha incorretos.');
+       return;
+     }
+     startAuthenticatedSession();
+   }
+ }catch(err){
+   console.error('Falha ao autenticar usuário:',err);
+   showAuthError(err instanceof DOMException&&err.name==='QuotaExceededError'?'Não há espaço disponível para salvar esta conta neste navegador.':err.message||'Não foi possível concluir o acesso. Tente novamente.');
+ }finally{
+   submit.disabled=false;
+ }
+});
+$('#authSwitch').addEventListener('click',()=>{
+ setAuthMode(authMode==='login'?'register':'login');
+ $('#loginPassword').value='';
+ $('#confirmPassword').value='';
+});
 document.addEventListener('click',async e=>{
  const size=e.target.closest('[data-size]');if(size){state.selectedSize=size.dataset.size;document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('selected',b===size));updatePreview();return;}
  const b=e.target.closest('[data-action]');if(!b)return;
  const action=b.dataset.action,id=b.dataset.id;
+ if(action==='toggle-password'){
+   const input=$('#loginPassword'),visible=input.type==='password';
+   input.type=visible?'text':'password';
+   b.textContent=visible?'Ocultar':'Mostrar';
+   b.setAttribute('aria-label',visible?'Ocultar senha':'Mostrar senha');
+   b.setAttribute('aria-pressed',String(visible));
+ }
+ if(action==='logout'){
+   try{sessionStorage.removeItem(LOGIN_KEY)}catch(err){console.warn('Não foi possível encerrar a sessão:',err)}
+   setAuthenticated(false);
+   $('#loginForm').reset();
+   setAuthMode('login');
+   $('#loginPassword').type='password';
+   const toggle=$('[data-action="toggle-password"]');
+   toggle.textContent='Mostrar';
+   toggle.setAttribute('aria-label','Mostrar senha');
+   toggle.setAttribute('aria-pressed','false');
+ }
  if(action==='add')await addProduct();
  if(action==='save-edit')await saveEdit();
  if(action==='cancel-edit'){state.editing=null;render();}
@@ -383,4 +514,4 @@ async function stopNumberScanner(){
 }
 
 window.addEventListener('hashchange',()=>{state.editing=null;state.search='';state.selectedSize=undefined;render();});
-(async()=>{try{await load();render();}catch(err){$('#app').innerHTML=`<section class="panel"><h2>Não foi possível abrir o armazenamento</h2><p>Verifique se o navegador permite armazenamento local e recarregue o aplicativo.</p></section>`;console.error(err);}})();
+(async()=>{try{await load();setAuthenticated(isAuthenticated);render();}catch(err){$('#app').innerHTML=`<section class="panel"><h2>Não foi possível abrir o armazenamento</h2><p>Verifique se o navegador permite armazenamento local e recarregue o aplicativo.</p></section>`;console.error(err);}})();
