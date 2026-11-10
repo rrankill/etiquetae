@@ -69,6 +69,7 @@
   <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Fechar menu" hidden></button>
   <div class="shell" hidden>
     <aside class="sidebar" id="sidebar">
+      <button class="desktop-menu-toggle" id="desktopMenuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="navigation"><i data-lucide="menu"></i></button>
       <div class="brand"><div class="brand-mark">E</div><div><strong>Etiquetaê</strong><small>Gestão inteligente</small></div></div>
       <div class="nav-label">MENU PRINCIPAL</div>
       <nav id="navigation">
@@ -77,11 +78,57 @@
         <a href="#calcados" data-page="calcados"><i data-lucide="footprints"></i> Calçados</a>
         <a href="#casa" data-page="casa"><i data-lucide="lamp"></i> Moda Casa</a>
         <a href="#relatorios" data-page="relatorios"><i data-lucide="chart-no-axes-combined"></i> Relatórios</a>
+        <button class="nav-action" type="button" data-action="open-profile"><i data-lucide="user-round"></i> Perfil</button>
       </nav>
-      <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span><button class="logout-btn" type="button" data-action="logout">Sair</button></div>
+      <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span></div>
     </aside>
+    <div class="store-promo" role="note"><strong>GESTÃO DE ESTOQUE</strong><span>Seus dados ficam salvos neste dispositivo.</span></div>
     <main class="main"><div id="app" aria-live="polite"></div></main>
   </div>
+  <button class="account-backdrop" id="accountBackdrop" type="button" aria-label="Fechar painel de conta" hidden></button>
+  <aside class="account-panel" id="accountPanel" aria-labelledby="accountPanelTitle" aria-hidden="true" hidden>
+    <div class="account-content">
+      <div class="account-panel-head">
+        <div><span class="eyebrow">SUA CONTA</span><h2 id="accountPanelTitle">Perfil e ajuda</h2></div>
+        <button class="icon-btn account-close" id="accountPanelClose" type="button" aria-label="Fechar perfil"><i data-lucide="x"></i></button>
+      </div>
+      <section class="account-theme" aria-labelledby="accountThemeTitle">
+        <div><strong id="accountThemeTitle">Tema</strong><small>Escolha como prefere visualizar a plataforma.</small></div>
+        <div class="theme-options" role="group" aria-label="Tema da plataforma">
+          <button type="button" data-theme-choice="light"><i data-lucide="sun"></i> Claro</button>
+          <button type="button" data-theme-choice="dark"><i data-lucide="moon"></i> Escuro</button>
+        </div>
+      </section>
+      <div class="account-tabs" role="tablist" aria-label="Opções da conta">
+        <button id="profileTab" type="button" role="tab" aria-controls="profileSection" aria-selected="true" data-account-tab="profile">Perfil</button>
+        <button id="guideTab" type="button" role="tab" aria-controls="guideSection" aria-selected="false" data-account-tab="guide">Como usar</button>
+      </div>
+      <section class="account-section" id="profileSection" role="tabpanel" aria-labelledby="profileTab">
+        <form id="profileForm">
+          <div class="field"><label for="profileName">NOME DO FUNCIONÁRIO</label><input id="profileName" name="name" autocomplete="name" maxlength="100" placeholder="Seu nome" required></div>
+          <div class="field"><label for="profileRole">CARGO</label><input id="profileRole" name="role" maxlength="80" placeholder="Ex.: Assistente de loja" required></div>
+          <div class="field"><label for="profileDepartment">SETOR</label><input id="profileDepartment" name="department" maxlength="80" placeholder="Ex.: Estoque ou vendas"></div>
+          <div class="field"><label for="profileEmail">E-MAIL DE CONTATO</label><input id="profileEmail" name="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@empresa.com"></div>
+          <div class="field"><label for="profilePhone">TELEFONE OU RAMAL</label><input id="profilePhone" name="phone" type="tel" autocomplete="tel" maxlength="30" placeholder="(00) 00000-0000"></div>
+          <div class="field"><label for="profileEmployeeId">MATRÍCULA (OPCIONAL)</label><input id="profileEmployeeId" name="employeeId" maxlength="40" placeholder="Identificação interna"></div>
+          <p class="account-storage-note">Essas informações ficam salvas somente neste navegador e não são sincronizadas.</p>
+          <button class="btn profile-save" type="submit"><i data-lucide="save"></i> Salvar perfil</button>
+        </form>
+      </section>
+      <section class="account-section usage-guide" id="guideSection" role="tabpanel" aria-labelledby="guideTab" hidden>
+        <p class="guide-intro">Um roteiro rápido para organizar os produtos da loja.</p>
+        <ol>
+          <li><strong>Escolha uma categoria</strong><span>Use Início, Roupas, Calçados ou Moda Casa no menu principal.</span></li>
+          <li><strong>Selecione o grupo e a subcategoria</strong><span>Navegue pelas opções até chegar ao tipo de produto que deseja cadastrar.</span></li>
+          <li><strong>Informe o código e a quantidade</strong><span>Selecione o tamanho quando necessário. Você também pode usar “Ler números” para escanear uma etiqueta.</span></li>
+          <li><strong>Adicione e acompanhe os produtos</strong><span>Consulte a lista para buscar, editar ou excluir registros e ajustar quantidades.</span></li>
+          <li><strong>Consulte e exporte relatórios</strong><span>Em Relatórios, filtre os registros e exporte CSV, Excel, PDF ou um backup JSON.</span></li>
+        </ol>
+        <p class="guide-reminder"><i data-lucide="info"></i> Os registros ficam neste dispositivo. Exporte um backup JSON para guardá-los.</p>
+      </section>
+    </div>
+    <div class="account-panel-foot"><button class="logout-btn account-logout" type="button" data-action="logout"><i data-lucide="log-out"></i><span>Sair da conta</span></button></div>
+  </aside>
   <div id="toast" role="status"></div>
   <dialog id="modal"></dialog>
   <dialog id="scannerDialog" class="scanner-dialog">

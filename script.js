@@ -88,6 +88,7 @@ const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=
 const LOGIN_KEY='etiquetae_authenticated_v2';
 const ACCOUNTS_KEY='etiquetae_accounts_v1';
 const THEME_KEY='etiquetae_theme_v1';
+const PROFILE_KEY='etiquetae_employee_profile_v1';
 const PASSWORD_ITERATIONS=150000;
 let authMode='login';
 let isAuthenticated=false;
@@ -98,6 +99,11 @@ function setTheme(theme,persist=true){
  const button=$('#themeToggle');
  button.setAttribute('aria-label',isDark?'Ativar tema claro':'Ativar tema escuro');
  button.title=isDark?'Ativar tema claro':'Ativar tema escuro';
+ document.querySelectorAll('[data-theme-choice]').forEach(option=>{
+  const selected=option.dataset.themeChoice===(isDark?'dark':'light');
+  option.classList.toggle('selected',selected);
+  option.setAttribute('aria-pressed',String(selected));
+ });
  if(persist){
   try{localStorage.setItem(THEME_KEY,isDark?'dark':'light')}
   catch(err){console.warn('Não foi possível salvar a preferência de tema:',err)}
@@ -115,6 +121,7 @@ function setAuthenticated(value){
  $('#loginScreen').hidden=value;
  document.querySelector('.mobile-top').hidden=!value;
  document.querySelector('.shell').hidden=!value;
+ if(!value)closeAccountPanel();
 }
 function setAuthMode(mode){
  authMode=mode;
@@ -220,6 +227,7 @@ function productPage(cat,group,sub,isHome=false){
  const activeSize=selected?.size || (sizes?.some(([label])=>label===state.selectedSize)?state.selectedSize:null) || (sizes?.some(([label])=>label===state.size)?state.size:null) || sizes?.[0]?.[0] || '';
  if(sizes)state.selectedSize=activeSize;
  return `${isHome?'':head(sub,'Cadastre e gerencie os códigos desta subcategoria.',`${catLabel(cat).toUpperCase()} / ${group.toUpperCase()}`)}
+ ${isHome?`<section class="hero"><div class="hero-content"><span class="eyebrow"><span class="hero-spark">${icon('sparkles')}</span> GESTÃO INTELIGENTE</span><h2>Seu estoque, em destaque.</h2><p>Organize produtos, códigos e quantidades com tudo à mão para acompanhar cada detalhe.</p><span class="hero-note">${icon('database')} ${products.length} ${products.length===1?'produto registrado':'produtos registrados'} neste dispositivo</span></div><div class="hero-art" aria-hidden="true"><div class="hero-ring"></div><span class="hero-tag">${icon('tag')}</span><span class="hero-shirt">${icon('shirt')}</span><span class="hero-check">${icon('check')}</span></div></section>`:''}
  <section class="panel"><h2>${selected?'Editar produto':'Adicionar produto'}</h2><div class="form-grid">
  <div class="field"><label for="baseCode">${withSize?'CÓDIGO-BASE (8 DÍGITOS)':'CÓDIGO DO PRODUTO (12 DÍGITOS)'}</label><div class="scan-input-row"><input id="baseCode" inputmode="numeric" maxlength="${withSize?8:12}" placeholder="${withSize?'00000000':'000000000000'}" value="${esc(selected?.baseCode||'')}"><button class="btn scan-launch" type="button" data-action="start-scanner">${icon('scan-line')} <span>Ler números</span></button></div></div>
  ${withSize?`<div class="field"><label>TAMANHO</label><div class="size-list">${sizes.map(([label,id])=>`<button type="button" class="size-btn ${activeSize===label?'selected':''}" data-size="${esc(label)}">${esc(label)}<small>${id}</small></button>`).join('')}</div></div>`:''}
@@ -258,13 +266,58 @@ function render(){
 }
 function closeMobileMenu(){
  $('#sidebar').classList.remove('open');
+ $('#sidebar').classList.remove('navigation-open');
  $('#sidebarBackdrop').hidden=true;
  $('#menuToggle').setAttribute('aria-expanded','false');
+ $('#desktopMenuToggle').setAttribute('aria-expanded','false');
+ $('#desktopMenuToggle').setAttribute('aria-label','Abrir menu');
 }
 function openMobileMenu(){
  $('#sidebar').classList.add('open');
  $('#sidebarBackdrop').hidden=false;
  $('#menuToggle').setAttribute('aria-expanded','true');
+}
+function setAccountTab(tab){
+ const isProfile=tab==='profile';
+ $('#profileTab').setAttribute('aria-selected',String(isProfile));
+ $('#guideTab').setAttribute('aria-selected',String(!isProfile));
+ $('#profileSection').hidden=!isProfile;
+ $('#guideSection').hidden=isProfile;
+}
+function openAccountPanel(tab='profile'){
+ closeMobileMenu();
+ setAccountTab(tab);
+ $('#accountPanel').hidden=false;
+ $('#accountBackdrop').hidden=false;
+ $('#accountPanel').setAttribute('aria-hidden','false');
+ refreshIcons();
+ (tab==='profile'?$('#profileName'):$('#guideTab')).focus();
+}
+function closeAccountPanel(){
+ const panel=$('#accountPanel');
+ if(!panel)return;
+ const wasOpen=!panel.hidden;
+ panel.hidden=true;
+ $('#accountBackdrop').hidden=true;
+ panel.setAttribute('aria-hidden','true');
+ if(wasOpen&&isAuthenticated){
+  const returnTarget=window.matchMedia('(max-width: 900px)').matches?$('#menuToggle'):$('#desktopMenuToggle');
+  returnTarget.focus();
+ }
+}
+function loadEmployeeProfile(){
+ try{
+  const stored=localStorage.getItem(PROFILE_KEY);
+  const profile=stored?JSON.parse(stored):{};
+  if(!profile||typeof profile!=='object'||Array.isArray(profile))throw new Error('Os dados do perfil estão inválidos.');
+  ['name','role','department','email','phone','employeeId'].forEach(key=>{
+   const field=$(`#profile${key[0].toUpperCase()+key.slice(1)}`);
+   field.value=typeof profile[key]==='string'?profile[key]:'';
+  });
+ }catch(err){
+  console.warn('Não foi possível carregar o perfil do funcionário:',err);
+  toast('Não foi possível carregar os dados do perfil.',true);
+ }
 }
 function goBackToParentPage(){
  const hash=decodeURIComponent(location.hash.slice(1)||'inicio').split('/');
@@ -334,7 +387,42 @@ $('#menuToggle').addEventListener('click',()=>{
  $('#sidebarBackdrop').hidden=!isOpen;
  $('#menuToggle').setAttribute('aria-expanded',String(isOpen));
 });
+$('#desktopMenuToggle').addEventListener('click',()=>{
+ const isOpen=$('#sidebar').classList.toggle('navigation-open');
+ $('#sidebarBackdrop').hidden=!isOpen;
+ $('#desktopMenuToggle').setAttribute('aria-expanded',String(isOpen));
+ $('#desktopMenuToggle').setAttribute('aria-label',isOpen?'Fechar menu':'Abrir menu');
+});
 $('#sidebarBackdrop').addEventListener('click',closeMobileMenu);
+$('#accountPanelClose').addEventListener('click',closeAccountPanel);
+$('#accountBackdrop').addEventListener('click',closeAccountPanel);
+$('#profileTab').addEventListener('click',()=>setAccountTab('profile'));
+$('#guideTab').addEventListener('click',()=>setAccountTab('guide'));
+document.querySelectorAll('[data-theme-choice]').forEach(option=>option.addEventListener('click',()=>{
+ setTheme(option.dataset.themeChoice);
+}));
+$('#profileForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const profile={
+  name:$('#profileName').value.trim(),
+  role:$('#profileRole').value.trim(),
+  department:$('#profileDepartment').value.trim(),
+  email:$('#profileEmail').value.trim(),
+  phone:$('#profilePhone').value.trim(),
+  employeeId:$('#profileEmployeeId').value.trim()
+ };
+ if(!profile.name||!profile.role)return toast('Informe o nome e o cargo para salvar o perfil.',true);
+ try{
+  localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));
+  toast('Perfil salvo neste dispositivo.');
+ }catch(err){
+  console.error('Não foi possível salvar o perfil do funcionário:',err);
+  toast('Não foi possível salvar o perfil. Verifique o espaço disponível no navegador.',true);
+ }
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&!$('#accountPanel').hidden)closeAccountPanel();
+});
 let menuSwipeStart=null;
 document.addEventListener('touchstart',e=>{
  if(e.touches.length!==1||!window.matchMedia('(max-width: 900px)').matches||$('.shell').hidden){
@@ -416,6 +504,7 @@ document.addEventListener('click',async e=>{
    b.setAttribute('aria-label',visible?'Ocultar senha':'Mostrar senha');
    b.setAttribute('aria-pressed',String(visible));
  }
+ if(action==='open-profile')openAccountPanel('profile');
  if(action==='logout'){
    try{localStorage.removeItem(LOGIN_KEY)}catch(err){console.warn('Não foi possível encerrar a sessão:',err)}
    setAuthenticated(false);
@@ -632,4 +721,4 @@ async function stopNumberScanner(){
 }
 
 window.addEventListener('hashchange',()=>{state.editing=null;state.search='';state.selectedSize=undefined;closeMobileMenu();render();window.scrollTo(0,0);});
-(async()=>{try{await load();setAuthenticated(isAuthenticated);render();}catch(err){$('#app').innerHTML=`<section class="panel"><h2>Não foi possível abrir o armazenamento</h2><p>Verifique se o navegador permite armazenamento local e recarregue o aplicativo.</p></section>`;console.error(err);}})();
+(async()=>{try{loadEmployeeProfile();await load();setAuthenticated(isAuthenticated);render();}catch(err){$('#app').innerHTML=`<section class="panel"><h2>Não foi possível abrir o armazenamento</h2><p>Verifique se o navegador permite armazenamento local e recarregue o aplicativo.</p></section>`;console.error(err);}})();
