@@ -18,10 +18,6 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Ativar tema escuro" title="Ativar tema escuro">
-    <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg>
-    <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
-  </button>
   <div class="splash-screen" id="splashScreen" aria-hidden="true">
     <div class="splash-brand">
       <span class="brand-mark splash-mark">E</span>
@@ -78,7 +74,15 @@
         <a href="#calcados" data-page="calcados"><i data-lucide="footprints"></i> Calçados</a>
         <a href="#casa" data-page="casa"><i data-lucide="lamp"></i> Moda Casa</a>
         <a href="#relatorios" data-page="relatorios"><i data-lucide="chart-no-axes-combined"></i> Relatórios</a>
+        <div class="theme-menu-wrap">
+          <button id="themeMenuToggle" class="nav-action" type="button" data-action="toggle-theme" aria-expanded="false"><i data-lucide="sun-moon"></i> Tema</button>
+          <div class="theme-menu" id="themeMenu" hidden>
+            <button type="button" class="theme-menu-option" data-theme-choice="light" aria-pressed="false"><i data-lucide="sun"></i> Claro</button>
+            <button type="button" class="theme-menu-option" data-theme-choice="dark" aria-pressed="false"><i data-lucide="moon"></i> Escuro</button>
+          </div>
+        </div>
         <button class="nav-action" type="button" data-action="open-profile"><i data-lucide="user-round"></i> Perfil</button>
+        <button class="nav-action" type="button" data-action="logout"><i data-lucide="log-out"></i> Sair</button>
       </nav>
       <div class="sidebar-foot"><i data-lucide="database"></i><span>Seus dados ficam salvos neste dispositivo.</span></div>
     </aside>
