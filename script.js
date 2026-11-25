@@ -62,7 +62,7 @@ const db=(function(){
   }};
 })();
 const CATEGORIES={
-  roupas:{label:'Roupas',icon:'shirt',groups:{
+  roupas:{label:'Registrar',icon:'shirt',groups:{
     Masculino:['Moda Praia','Cueca','Calça','Camisas Sociais','Básico','Jovem','Adulto','Body Work','Acessórios do Masculino'],
     Feminino:['Moda Praia','Moda Íntima','Calça','Básico','Jovem','Adulto','Body Work','Acessórios do Feminino'],
     Infantil:['Menino','Menina','Moda Praia','Acessórios do Infantil']}},
